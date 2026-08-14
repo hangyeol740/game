@@ -10,7 +10,6 @@ st.set_page_config(
 
 # ---------------------------------------------------------
 # 💡 [성공 확률 계산 함수]
-# D20 주사위(1~20) + 플레이어 스탯 >= 난이도
 # ---------------------------------------------------------
 def calculate_success_rate(stat_value, difficulty):
     required_dice = difficulty - stat_value
@@ -57,7 +56,7 @@ JOBS = {
 }
 
 # ---------------------------------------------------------
-# 2. 다양하고 풍부해진 이벤트 카드 목록 (총 8개)
+# 2. 이벤트 카드 목록
 # ---------------------------------------------------------
 EVENTS = [
     {
@@ -231,38 +230,37 @@ EVENTS = [
 ]
 
 # ---------------------------------------------------------
-# 3. 게임 상태 초기화 및 중복 방지 [카드 덱] 시스템
+# 3. 게임 상태 초기화 및 안전한 리셋 함수
 # ---------------------------------------------------------
 def reset_game():
     st.session_state.game_started = False
     st.session_state.stage = "생성"
     st.session_state.current_event = None
-    st.session_state.event_deck = [] # 이벤트 인덱스가 저장될 덱(Deck)
+    st.session_state.event_deck = []  # 덱 초기화
     st.session_state.log = ""
 
-if "game_started" not in st.session_state:
+# 필수 상태 변수 안전 검사
+if "game_started" not in st.session_state or "event_deck" not in st.session_state:
     reset_game()
 
-# 💡 [중복 없는 이벤트 뽑기 함수]
 def draw_next_event():
-    # 덱이 비어있으면 전체 이벤트 인덱스를 새로 무작위로 섞어 채움
-    if not st.session_state.event_deck:
+    # 덱이 비어있으면 전체 이벤트를 다시 섞어 채움
+    if not st.session_state.get("event_deck"):
         indices = list(range(len(EVENTS)))
         random.shuffle(indices)
         st.session_state.event_deck = indices
         
-    # 덱에서 하나를 꺼내어 이벤트를 지정 (뽑은 이벤트는 덱에서 제거됨)
     next_idx = st.session_state.event_deck.pop()
     st.session_state.current_event = EVENTS[next_idx]
     st.session_state.stage = "이벤트"
 
 # ---------------------------------------------------------
-# 4. [왼쪽 사이드바] 스탯, 인벤토리, 리셋 버튼
+# 4. [왼쪽 사이드바] 스탯, 인벤토리, 안전한 덱 수량 표기
 # ---------------------------------------------------------
 with st.sidebar:
     st.header("📜 모험가 프로필")
     
-    if st.session_state.game_started:
+    if st.session_state.get("game_started", False):
         st.write(f"**직업:** {st.session_state.job}")
         st.write(f"❤️ **체력:** {st.session_state.hp} / {st.session_state.max_hp}")
         st.write(f"💰 **골드:** {st.session_state.gold} G")
@@ -280,9 +278,9 @@ with st.sidebar:
         st.write(f"✨ **매력 (CHA):** {st.session_state.cha}")
         
         st.divider()
-        # 남은 미확인 이벤트 수 안내
-        remaining_cards = len(st.session_state.event_deck)
-        st.caption(f"🃏 덱에 남은 미확인 이벤트: **{remaining_cards}개**")
+        # AttributeError 방지를 위해 .get() 안전 처리
+        deck_list = st.session_state.get("event_deck", [])
+        st.caption(f"🃏 덱에 남은 미확인 이벤트: **{len(deck_list)}개**")
         
         if st.button("🔄 처음부터 다시 시작", use_container_width=True):
             reset_game()
@@ -380,7 +378,6 @@ else:
                     st.session_state.gold += choice.get("succ_gold", 0)
                     st.session_state.hp = min(st.session_state.max_hp, st.session_state.hp + choice.get("succ_hp", 0))
                     
-                    # 성공 시 20% 확률로 스탯 성장
                     if random.random() < 0.20:
                         setattr(st.session_state, stat_key, p_stat + 1)
                         msg += f"\n\n✨ **[능력치 상승!]** 시련을 이겨내고 **{stat_name}** 이(가) 1 상승했습니다!"
