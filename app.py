@@ -1,140 +1,244 @@
 import streamlit as st
+import random
 
-# 페이지 설정 (반응형 레이아웃 및 브라우저 탭 이름 설정)
+# 페이지 설정 (반응형 레이아웃)
 st.set_page_config(
-    page_title="모험가 이야기 RPG",
-    page_icon="🗡️",
+    page_title="모험가 이야기 (Life in Adventure)",
+    page_icon="📜",
     layout="centered"
 )
 
 # ---------------------------------------------------------
-# 1. 게임 상태(Session State) 초기화
-# 세션 상태는 사용자가 버튼을 누르거나 페이지가 새로고침되어도 
-# 데이터(체력, 골드 등)가 사라지지 않게 유지해 줍니다.
+# 1. 게임 세션 상태 초기화
 # ---------------------------------------------------------
-if "hp" not in st.session_state:
-    st.session_state.hp = 100         # 현재 체력
-    st.session_state.max_hp = 100     # 최대 체력
-    st.session_state.gold = 50        # 소지 골드
-    st.session_state.weapon = "녹슨 단검" # 장착한 무기
-    st.session_state.attack = 10      # 공격력
-    st.session_state.stage = "마을"   # 현재 위치 (마을, 사냥터, 상점, 이벤트 등)
-    st.session_state.log = "모험의 땅에 오신 것을 환영합니다!" # 게임 진행 상황 메시지
+if "game_started" not in st.session_state:
+    st.session_state.game_started = False  # 캐릭터 생성 전
+
+# 직업 정보 정의 (시작 장비, 기본 스탯, 직업 설명)
+JOBS = {
+    "전사": {
+        "desc": "강한 체력과 힘으로 정면 돌파하는 영웅",
+        "weapon": "강철 대검",
+        "armor": "사슬 갑옷",
+        "base_hp": 120,
+        "base_stats": {"str": 12, "dex": 8, "int": 8, "cha": 8}
+    },
+    "도적": {
+        "desc": "재빠른 손놀림과 민첩함으로 위기를 탈출하는 자",
+        "weapon": "독 바른 단검",
+        "armor": "가죽 가포",
+        "base_hp": 90,
+        "base_stats": {"str": 8, "dex": 13, "int": 9, "cha": 8}
+    },
+    "마법사": {
+        "desc": "높은 지능과 마법으로 사건을 해결하는 연구자",
+        "weapon": "수습 지팡이",
+        "armor": "마법사 로브",
+        "base_hp": 80,
+        "base_stats": {"str": 7, "dex": 8, "int": 14, "cha": 9}
+    },
+    "사제": {
+        "desc": "뛰어난 매력과 신성한 힘으로 사람들을 인도하는 자",
+        "weapon": "메이스",
+        "armor": "사제 의복",
+        "base_hp": 100,
+        "base_stats": {"str": 9, "dex": 7, "int": 10, "cha": 12}
+    }
+}
 
 # ---------------------------------------------------------
-# 2. 화면 상단: 상태창 (플레이어 정보)
+# 2. [단계 1] 캐릭터 생성 및 스탯 분배 화면
 # ---------------------------------------------------------
-st.title("🗡️ 모험가 이야기 RPG")
-st.markdown("외부 도구 없이 Python과 Streamlit으로 만든 텍스트 RPG입니다.")
+if not st.session_state.game_started:
+    st.title("📜 모험가 생성 (Character Creation)")
+    st.subheader("당신의 모험가를 설정하세요")
 
-# 3개의 열로 나누어 상태를 깔끔하게 표시 (반응형 지원)
-col1, col2, col3, col4 = st.columns(4)
-with col1:
-    st.metric(label="❤️ 체력", value=f"{st.session_state.hp} / {st.session_state.max_hp}")
-with col2:
-    st.metric(label="💰 골드", value=f"{st.session_state.gold} G")
-with col3:
-    st.metric(label="⚔️ 공격력", value=str(st.session_state.attack))
-with col4:
-    st.metric(label="🗡️ 장비", value=st.session_state.weapon)
-
-st.divider()
-
-# ---------------------------------------------------------
-# 3. 게임 로그 (최근 행동 결과 출력)
-# ---------------------------------------------------------
-st.info(f"📢 **상황 로그:** {st.session_state.log}")
-
-# ---------------------------------------------------------
-# 4. 게임 스테이지별 로직 및 선택지
-# ---------------------------------------------------------
-
-# [1] 마을 상태
-if st.session_state.stage == "마을":
-    st.subheader("🏡 평화로운 마을")
-    st.write("다양한 모험을 준비하는 안전한 마을입니다. 다음 행동을 선택하세요.")
+    # [1] 직업 선택
+    job_choice = st.selectbox("🎭 직업을 선택하세요", list(JOBS.keys()))
+    job_info = JOBS[job_choice]
     
-    # 버튼을 누르면 현재 스테이지가 변경되거나 이벤트가 발생합니다.
-    if st.button("🌲 숲으로 사냥하러 가기", use_container_width=True):
-        st.session_state.stage = "사냥터"
-        st.session_state.log = "몬스터가 도사리는 숲에 입장했습니다."
-        st.rerun() # 화면을 즉시 새로고침하여 변경된 상태를 반영
-        
-    if st.button("🛒 아이템 상점 가기", use_container_width=True):
-        st.session_state.stage = "상점"
-        st.session_state.log = "상점에 입장했습니다. 필요한 물품을 구매하세요."
-        st.rerun()
+    st.info(f"**{job_choice}**: {job_info['desc']}\n\n"
+            f"🗡️ **시작 무기:** {job_info['weapon']} | 🛡️ **시작 방어구:** {job_info['armor']} | ❤️ **기본 체력:** {job_info['base_hp']}")
 
-    if st.button("🛌 여관에서 휴식하기 (비용: 10 골드)", use_container_width=True):
-        if st.session_state.gold >= 10:
-            st.session_state.gold -= 10
-            st.session_state.hp = st.session_state.max_hp
-            st.session_state.log = "여관에서 편안하게 휴식을 취해 체력이 모두 회복되었습니다! (-10 골드)"
-        else:
-            st.session_state.log = "골드가 부족하여 여관을 이용할 수 없습니다!"
-        st.rerun()
+    st.divider()
+    st.write("📊 **추가 능력치 포인트 분배 (남은 포인트: 총 10 pt)**")
+    st.caption("※ 모험가 이야기에서는 스탯 올리기가 매우 어렵습니다. 초기 분배가 중요합니다!")
 
-# [2] 사냥터 상태
-elif st.session_state.stage == "사냥터":
-    st.subheader("🌲 위험한 숲")
-    st.write("몬스터를 사냥해 골드를 모으고 모험을 즐기세요.")
-    
-    if st.button("⚔️ 슬라임 사냥하기", use_container_width=True):
-        st.session_state.gold += 15
-        st.session_state.log = "슬라임을 물리치고 15 골드를 획득했습니다!"
-        st.rerun()
-        
-    if st.button("🔥 숲의 보스(고블린) 도전하기", use_container_width=True):
-        if st.session_state.attack >= 15:
-            st.session_state.gold += 50
-            st.session_state.log = "고블린을 멋지게 물리치고 보상으로 50 골드를 얻었습니다!"
-        else:
-            st.session_state.hp -= 30
-            st.session_state.log = "공격력이 부족해 고블린에게 당했습니다! 체력 30 감소."
-            if st.session_state.hp <= 0:
-                st.session_state.stage = "게임오버"
-        st.rerun()
+    # [2] 스탯 포인트 투자 (슬라이더 사용)
+    # 총 보너스 포인트 10을 초과하지 않도록 제한
+    c1, c2 = st.columns(2)
+    with c1:
+        add_str = st.number_input("⚔️ 근력 (STR)", min_value=0, max_value=10, value=2)
+        add_dex = st.number_input("🎯 민첩 (DEX)", min_value=0, max_value=10, value=2)
+    with c2:
+        add_int = st.number_input("🧠 지능 (INT)", min_value=0, max_value=10, value=2)
+        add_cha = st.number_input("✨ 매력 (CHA)", min_value=0, max_value=10, value=4)
 
-    if st.button("🏃 마을로 돌아가기", use_container_width=True):
-        st.session_state.stage = "마을"
-        st.session_state.log = "안전하게 마을로 돌아왔습니다."
-        st.rerun()
+    used_points = add_str + add_dex + add_int + add_cha
+    remaining_points = 10 - used_points
 
-# [3] 상점 상태
-elif st.session_state.stage == "상점":
-    st.subheader("🛒 잡화점")
-    st.write("더 강한 장비를 구매하여 모험을 유리하게 만드세요.")
-    
-    # 이미 구매했는지 여부에 따른 조건문 처리
-    if st.session_state.weapon == "녹슨 단검":
-        if st.button("🗡️ 철검 구매하기 (가격: 30 골드)", use_container_width=True):
-            if st.session_state.gold >= 30:
-                st.session_state.gold -= 30
-                st.session_state.weapon = "철검"
-                st.session_state.attack = 20
-                st.session_state.log = "철검을 구매했습니다! 공격력이 20으로 증가합니다."
-            else:
-                st.session_state.log = "골드가 부족합니다!"
-            st.rerun()
+    if remaining_points < 0:
+        st.error(f"⚠️ 사용 가능한 보너스 포인트를 초과했습니다! ({abs(remaining_points)}pt 초과)")
     else:
-        st.write("✨ 이미 상점에서 판매하는 최고의 장비를 소유하고 있습니다!")
+        st.success(f"남은 보너스 포인트: **{remaining_points} pt**")
+        
+        if st.button("🚀 이 설정으로 모험 시작하기", use_container_width=True):
+            # 게임 데이터 세션에 저장
+            st.session_state.job = job_choice
+            st.session_state.weapon = job_info["weapon"]
+            st.session_state.armor = job_info["armor"]
+            st.session_state.hp = job_info["base_hp"]
+            st.session_state.max_hp = job_info["base_hp"]
+            st.session_state.gold = 30
+            
+            # 최종 스탯 = 기본 스탯 + 투자 스탯
+            st.session_state.str = job_info["base_stats"]["str"] + add_str
+            st.session_state.dex = job_info["base_stats"]["dex"] + add_dex
+            st.session_state.int = job_info["base_stats"]["int"] + add_int
+            st.session_state.cha = job_info["base_stats"]["cha"] + add_cha
+            
+            st.session_state.log = f"{job_choice}(으)로 모험을 시작합니다. [{job_info['weapon']}]을(를) 장착했습니다."
+            st.session_state.stage = "이벤트"
+            st.session_state.game_started = True
+            st.rerun()
 
-    if st.button("🏡 마을 광장으로 돌아가기", use_container_width=True):
-        st.session_state.stage = "마을"
-        st.session_state.log = "상점에서 나왔습니다."
-        st.rerun()
+# ---------------------------------------------------------
+# 3. [단계 2] 메인 게임 화면 (이벤트 및 어려운 스탯 성장)
+# ---------------------------------------------------------
+else:
+    # 이벤트 카드가 정의되어 있지 않다면 설정
+    EVENTS = [
+        {
+            "id": "goblin_ambush",
+            "title": "📜 숲속의 고블린 기습",
+            "desc": "수풀 속에서 고블린 무리가 기습했습니다!",
+            "choices": [
+                {
+                    "text": "⚔️ 무기를 휘둘러 정면 대결",
+                    "stat": "str",
+                    "diff": 14,
+                    "succ": "시작 무기를 활용해 고블린들을 물리쳤습니다! (+20 Gold)",
+                    "fail": "고블린의 협공에 부상을 입었습니다. (-20 체력)",
+                    "succ_gold": 20, "fail_hp": 20
+                },
+                {
+                    "text": "🎯 신속하게 숲속으로 재빠르게 회피",
+                    "stat": "dex",
+                    "diff": 13,
+                    "succ": "날렵한 몸짓으로 기습을 피하고 탈출했습니다.",
+                    "fail": "발이 엉켜 넘어져 다쳤습니다. (-15 체력)",
+                    "fail_hp": 15
+                }
+            ]
+        },
+        {
+            "id": "ancient_statue",
+            "title": "📜 고대의 모험가 석상",
+            "desc": "이끼 낀 오래된 모험가의 석상이 비밀스러운 비문을 품고 있습니다.",
+            "choices": [
+                {
+                    "text": "🧠 고대 고문자를 해석한다",
+                    "stat": "int",
+                    "diff": 15,
+                    "succ": "비문을 해독하여 고대의 지혜를 깨달았습니다!",
+                    "fail": "머리가 지끈거리며 아무것도 얻지 못했습니다.",
+                },
+                {
+                    "text": "✨ 석상 앞에서 정성스럽게 기도한다",
+                    "stat": "cha",
+                    "diff": 12,
+                    "succ": "석상에서 따뜻한 빛이 나와 상처를 치료해 줍니다. (+25 체력 회복)",
+                    "fail": "아무런 일도 일어나지 않았습니다.",
+                    "succ_hp": 25
+                }
+            ]
+        }
+    ]
 
-# [4] 게임 오버 상태
-elif st.session_state.stage == "게임오버":
-    st.error("💀 체력이 0이 되어 쓰러졌습니다... 게임 오버!")
+    def next_event():
+        st.session_state.current_event = random.choice(EVENTS)
+        st.session_state.stage = "이벤트"
+
+    if "current_event" not in st.session_state:
+        next_event()
+
+    # 상단 플레이어 프로필 UI
+    st.title(f"📜 모험가 이야기 ({st.session_state.job})")
     
-    if st.button("🔄 게임 다시 시작하기", use_container_width=True):
-        # 모든 상태를 처음으로 초기화
-        st.session_state.hp = 100
-        st.session_state.max_hp = 100
-        st.session_state.gold = 50
-        st.session_state.weapon = "녹슨 단검"
-        st.session_state.attack = 10
-        st.session_state.stage = "마을"
-        st.session_state.log = "새로운 모험이 다시 시작됩니다."
-        st.rerun()
+    # 1줄: 체력, 골드, 장비 정보
+    m1, m2, m3, m4 = st.columns(4)
+    m1.metric("❤️ 체력", f"{st.session_state.hp}/{st.session_state.max_hp}")
+    m2.metric("💰 골드", f"{st.session_state.gold} G")
+    m3.metric("🗡️ 무기", st.session_state.weapon)
+    m4.metric("🛡️ 방어구", st.session_state.armor)
+
+    # 2줄: 능력치 (스탯)
+    s1, s2, s3, s4 = st.columns(4)
+    s1.metric("⚔️ 근력(STR)", st.session_state.str)
+    s2.metric("🎯 민첩(DEX)", st.session_state.dex)
+    s3.metric("🧠 지능(INT)", st.session_state.int)
+    s4.metric("✨ 매력(CHA)", st.session_state.cha)
+
+    st.divider()
+
+    # [A] 게임 오버
+    if st.session_state.hp <= 0:
+        st.error("💀 쓰러졌습니다... 당신의 모험은 여기서 끝납니다.")
+        if st.button("🔄 새로운 캐릭터 만들기", use_container_width=True):
+            st.session_state.game_started = False
+            st.rerun()
+
+    # [B] 이벤트 진행 화면
+    elif st.session_state.stage == "이벤트":
+        ev = st.session_state.current_event
+        st.subheader(ev["title"])
+        st.info(ev["desc"])
+        
+        st.write("👉 **행동 선택:**")
+        
+        for idx, choice in enumerate(ev["choices"]):
+            stat_key = choice["stat"]
+            stat_name = {"str": "근력", "dex": "민첩", "int": "지능", "cha": "매력"}[stat_key]
+            btn_text = f"{choice['text']}  [{stat_name} 판정 / 난이도 {choice['diff']}]"
+            
+            if st.button(btn_text, key=f"c_{idx}", use_container_width=True):
+                # 주사위 D20 시스템
+                dice = random.randint(1, 20)
+                p_stat = getattr(st.session_state, stat_key)
+                total = p_stat + dice
+                
+                # 결과 판단
+                if total >= choice["diff"]:
+                    msg = f"🎲 주사위({dice}) + 능력치({p_stat}) = **{total}** (난이도 {choice['diff']}) ➡️ **판정 성공!**\n\n"
+                    msg += choice["succ"] + "\n\n"
+                    
+                    # 보상 적용
+                    st.session_state.gold += choice.get("succ_gold", 0)
+                    st.session_state.hp = min(st.session_state.max_hp, st.session_state.hp + choice.get("succ_hp", 0))
+                    
+                    # 💡 스탯 성장 시스템 (하드코어: 성공 시 15% 확률로만 해당 스탯 +1 상승)
+                    if random.random() < 0.15:
+                        setattr(st.session_state, stat_key, p_stat + 1)
+                        msg += f"\n\n✨ **[스탯 성장!]** 모험을 통해 **{stat_name}** 이(가) 1 상승했습니다! ({p_stat} ➡️ {p_stat + 1})"
+                        
+                else:
+                    msg = f"🎲 주사위({dice}) + 능력치({p_stat}) = **{total}** (난이도 {choice['diff']}) ➡️ **판정 실패...**\n\n"
+                    msg += choice["fail"]
+                    
+                    st.session_state.hp -= choice.get("fail_hp", 0)
+                    
+                st.session_state.log = msg
+                st.session_state.stage = "결과"
+                st.rerun()
+
+    # [C] 판정 결과 화면
+    elif st.session_state.stage == "결과":
+        st.subheader("📜 판정 결과")
+        if "성공" in st.session_state.log:
+            st.success(st.session_state.log)
+        else:
+            st.warning(st.session_state.log)
+            
+        if st.button("▶️ 다음 모험으로 이동", use_container_width=True):
+            next_event()
+            st.rerun()
