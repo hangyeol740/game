@@ -80,11 +80,8 @@ if st.session_state.gold >= 150:
     st.stop()
 
 # ---------------------------------------------------------
-# 4. 탐험 및 이벤트 모드 (타이핑 효과 적용)
+# 4. 탐험 및 이벤트 목록 정의
 # ---------------------------------------------------------
-st.title("📜 모험가 이야기: 심화 탐험")
-
-# 확장된 이벤트 목록 (상점 이벤트 포함)
 EVENTS = [
     {
         "type": "combat",
@@ -145,34 +142,31 @@ st.subheader(f"📍 {event['title']}")
 desc_placeholder = st.empty()
 
 # ---------------------------------------------------------
-# 타이핑 애니메이션 및 스킵 버튼 처리 로직
+# 5. 타이핑 애니메이션 및 스킵 버튼 처리 로직
 # ---------------------------------------------------------
 if not st.session_state.text_animated:
-    # 클릭하면 애니메이션을 즉시 건너뛰고 전체 텍스트를 출력하는 버튼
     if st.button("⚡ 텍스트 한 번에 보기 (스킵)"):
         st.session_state.text_animated = True
         st.rerun()
 
-    # 타이핑 효과 시뮬레이션
     full_text = event["desc"]
     current_text = ""
     for char in full_text:
         current_text += char
         desc_placeholder.write(current_text)
-        time.sleep(0.015)  # 타이핑 속도 조절
+        time.sleep(0.015)
 
     st.session_state.text_animated = True
     st.rerun()
 else:
-    # 이미 타이핑이 끝났거나 스킵된 경우 전체 텍스트 고정 출력
     desc_placeholder.write(event["desc"])
 
 st.markdown("---")
 
 # ---------------------------------------------------------
-# 이벤트 종류에 따른 분기 처리 (전투/일반 이벤트 vs 상점 이벤트)
+# 6. 상점 이벤트 vs 일반 이벤트 분기 처리 (안전한 get 메서드 사용)
 # ---------------------------------------------------------
-if event["type"] == "merchant":
+if event.get("type") == "merchant":
     st.info("🛒 방랑 상인의 상점이 열렸습니다!")
 
     col1, col2 = st.columns(2)
@@ -213,7 +207,6 @@ else:
     # 일반 전투/선택지 이벤트 처리
     for i, choice in enumerate(event["choices"]):
         if st.button(choice["text"], key=f"choice_{i}"):
-            # 강철 검 장착 시 성공 확률 보정 (기본 50% -> 70% 확률로 성공)
             bonus = 20 if st.session_state.weapon == "강철 검" else 0
             success_roll = random.randint(1, 100) - bonus
 
@@ -235,7 +228,6 @@ else:
                         0, st.session_state.gold - choice["fail_gold"]
                     )
 
-            # 다음 무작위 이벤트로 넘어가기 위한 초기화
             st.session_state.current_event = None
             st.session_state.text_animated = False
             st.rerun()
