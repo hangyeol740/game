@@ -1,7 +1,7 @@
 import streamlit as st
 import random
 
-# 페이지 기본 설정 (반응형 모바일/PC 대응)
+# 페이지 기본 설정
 st.set_page_config(
     page_title="모험가 이야기 (Life in Adventure)",
     page_icon="📜",
@@ -10,20 +10,20 @@ st.set_page_config(
 
 # ---------------------------------------------------------
 # 💡 [성공 확률 계산 함수]
-# D20 주사위(1~20) + 플레이어 스탯 >= 난이도 만족 확률(%)
+# D20 주사위(1~20) + 플레이어 스탯 >= 난이도
 # ---------------------------------------------------------
 def calculate_success_rate(stat_value, difficulty):
     required_dice = difficulty - stat_value
     if required_dice <= 1:
-        return 100  # 1만 나와도 성공 (100%)
+        return 100
     elif required_dice > 20:
-        return 0    # 20이 나와도 실패 (0%)
+        return 0
     else:
         winning_rolls = 20 - required_dice + 1
         return int((winning_rolls / 20) * 100)
 
 # ---------------------------------------------------------
-# 1. 직업 데이터 (전체적으로 초기 스탯 하향 조정)
+# 1. 직업 데이터베이스
 # ---------------------------------------------------------
 JOBS = {
     "전사": {
@@ -31,7 +31,7 @@ JOBS = {
         "weapon": "녹슨 숏소드",
         "armor": "가죽 누비 갑옷",
         "base_hp": 100,
-        "base_stats": {"str": 7, "dex": 5, "int": 4, "cha": 4}  # 스탯 하향 (기존 12 -> 7)
+        "base_stats": {"str": 7, "dex": 5, "int": 4, "cha": 4}
     },
     "도적": {
         "desc": "민첩한 움직임과 재치로 위기를 벗어나는 기회주의자",
@@ -57,28 +57,26 @@ JOBS = {
 }
 
 # ---------------------------------------------------------
-# 2. 다양하고 구체적인 이벤트 카드 데이터베이스
+# 2. 다양하고 풍부해진 이벤트 카드 목록 (총 8개)
 # ---------------------------------------------------------
 EVENTS = [
     {
         "id": "goblin_ambush",
         "title": "📜 숲속의 고블린 매복",
-        "desc": "울창한 숲길을 지나던 중, 나무 위와 수풀 속에서 고블린 3마리가 몽둥이를 들고 튀어나왔습니다! 놈들의 눈빛이 굶주림으로 번뜩입니다.",
+        "desc": "울창한 숲길을 지나던 중, 나무 위와 수풀 속에서 굶주린 고블린 3마리가 몽둥이를 들고 튀어나왔습니다!",
         "choices": [
             {
                 "text": "⚔️ 무기를 뽑아 들고 정면으로 맞서 싸운다",
-                "stat": "str",
-                "diff": 14,
-                "succ": "무게를 실은 공격으로 고블린 두 마리를 단숨에 제압했습니다. 남은 한 마리는 기겁하며 도망쳤습니다! (+20 Gold)",
-                "fail": "고블린들의 수에 눌려 여러 차례 몽둥이에 맞아 깊은 상처를 입었습니다. 겨우 내쫓았지만 피해가 큽니다. (-25 체력)",
+                "stat": "str", "diff": 14,
+                "succ": "무게를 실은 공격으로 고블린들을 제압했습니다! (+20 Gold)",
+                "fail": "고블린들의 수에 눌려 여러 차례 몽둥이에 맞았습니다. (-25 체력)",
                 "succ_gold": 20, "fail_hp": 25
             },
             {
                 "text": "🎯 수풀 사이 좁은 길로 날렵하게 몸을 날려 탈출한다",
-                "stat": "dex",
-                "diff": 13,
-                "succ": "고블린들이 헛방을 치는 사이, 가시 덩굴 사이를 빠져나와 안전한 곳까지 도망쳤습니다.",
-                "fail": "발이 가시 덩굴에 걸려 넘어졌습니다. 고블린들에게 얻어맞고 주머니 속 골드까지 털렸습니다. (-15 체력, -10 Gold)",
+                "stat": "dex", "diff": 13,
+                "succ": "고블린들이 헛방을 치는 사이 가시 덩굴을 빠져나와 도망쳤습니다.",
+                "fail": "가시 덩굴에 걸려 넘어져 다쳤습니다. (-15 체력, -10 Gold)",
                 "fail_hp": 15, "fail_gold": 10
             }
         ]
@@ -86,111 +84,176 @@ EVENTS = [
     {
         "id": "injured_merchant",
         "title": "📜 습격당한 상단 마차",
-        "desc": "길가에 뒤집혀 있는 마차를 발견했습니다. 마차 아래에 다리가 낀 상인이 피를 흘리며 신음하고 있습니다. 머지않아 피 냄새를 맡고 몬스터가 몰려올 것입니다.",
+        "desc": "길가에 뒤집힌 마차 아래에 다리가 낀 상인이 피를 흘리며 신음하고 있습니다. 곧 몬스터가 몰려올 것입니다.",
         "choices": [
             {
                 "text": "⚔️ 잔해를 힘으로 들어 올려 상인을 구출한다",
-                "stat": "str",
-                "diff": 15,
-                "succ": "무거운 마차 잔해를 들어 올려 상인을 구했습니다! 상인은 눈물을 흘리며 감사의 표시로 두툼한 주머니를 건넸습니다. (+35 Gold)",
-                "fail": "잔해를 들려다가 삐끗하여 근육이 찢어졌습니다. 힘을 쓰지 못해 상인도 구하지 못했습니다. (-15 체력)",
+                "stat": "str", "diff": 15,
+                "succ": "무거운 잔해를 들어 올려 상인을 구했습니다! 상인이 두툼한 주머니를 건넵니다. (+35 Gold)",
+                "fail": "잔해를 들려다가 허리를 삐끗하여 부상을 입었습니다. (-15 체력)",
                 "fail_hp": 15
             },
             {
-                "text": "✨ 따뜻한 말과 지혜로 상인의 불안을 달래며 레버 원리로 구출한다",
-                "stat": "cha",
-                "diff": 12,
-                "succ": "차분한 태도로 상인을 안심시키고 긴 나뭇가지를 활용해 무사히 구출했습니다. 상인이 보답으로 포션을 주었습니다. (+20 체력 회복)",
-                "fail": "당신의 당황한 모습에 상인은 더욱 패닉에 빠졌고, 서두르다가 마차가 더 기울어 부상이 악화되었습니다.",
-                "succ_hp": 20
+                "text": "✨ 따뜻한 말과 지혜로 상인을 안심시키며 레버 원리로 구출한다",
+                "stat": "cha", "diff": 12,
+                "succ": "차분하게 지렛대를 만들어 무사히 구출했습니다. 상인이 회복 포션을 줍니다. (+25 체력 회복)",
+                "fail": "당신의 당황한 모습에 상인은 더욱 패닉에 빠져 구조에 실패했습니다.",
+                "succ_hp": 25
             }
         ]
     },
     {
         "id": "ancient_ruins",
         "title": "📜 이끼 낀 고대 유적 문",
-        "desc": "산자락 깊은 곳에서 고대 문명이 남긴 유적 입구를 발견했습니다. 문에는 세월의 흔적이 느껴지는 기괴한 룬 문자들이 새겨져 있습니다.",
+        "desc": "산자락 깊은 곳에서 기괴한 룬 문자가 새겨진 고대 유적 입구를 발견했습니다.",
         "choices": [
             {
                 "text": "🧠 룬 문자의 법칙을 분석하여 비밀 문을 연다",
-                "stat": "int",
-                "diff": 16,
-                "succ": "문자의 고대 마법 공식을 풀어내어 비밀 장치를 해제했습니다! 상자 안에서 고대 금화를 찾았습니다. (+50 Gold)",
-                "fail": "잘못된 문자를 건드리는 바람에 환영 마법이 발동하여 마력이 엉키고 머리가 깨질 듯 아픕니다. (-20 체력)",
+                "stat": "int", "diff": 16,
+                "succ": "고대 마법 공식을 풀어내어 문을 열었습니다! 상자에서 금화를 획득합니다. (+50 Gold)",
+                "fail": "잘못된 문자를 건드려 환영 마법 폭발이 일어났습니다! (-20 체력)",
                 "succ_gold": 50, "fail_hp": 20
             },
             {
-                "text": "🎯 틈새 사이로 섬세하게 도구를 넣어 잠금장치를 해제한다",
-                "stat": "dex",
-                "diff": 15,
-                "succ": "철사를 정밀하게 조작하여 내부 걸쇠를 빼냈습니다! 비밀 방 내부에서 보물을 챙겼습니다. (+30 Gold)",
-                "fail": "도구가 부러지며 함정이 발동해 독침이 팔에 꽂혔습니다! (-25 체력)",
+                "text": "🎯 틈새 사이로 도구를 넣어 잠금장치를 해제한다",
+                "stat": "dex", "diff": 15,
+                "succ": "철사를 정밀하게 조작하여 내부 걸쇠를 빼냈습니다! (+30 Gold)",
+                "fail": "도구가 부러지며 함정이 발동해 독침이 꽂혔습니다! (-25 체력)",
                 "succ_gold": 30, "fail_hp": 25
             }
         ]
     },
     {
-        "id": "cursed_chest",
-        "title": "📜 어둠 속의 저주받은 보물상자",
-        "desc": "동굴 구석에서 자줏빛 기운을 내뿜는 단단한 쇠상자를 발견했습니다. 상자 주변에는 이전 모험가들의 유골이 흩어져 있습니다.",
+        "id": "witch_hut",
+        "title": "📜 늪지대의 숲속 마녀",
+        "desc": "수상한 연기가 피어오르는 오두막에서 기묘한 차림의 마녀가 솥에 묘약을 끓이고 있습니다.",
         "choices": [
             {
-                "text": "🧠 상자에 걸린 저주 공식을 해독해 중화한다",
-                "stat": "int",
-                "diff": 15,
-                "succ": "마법적인 결계를 차분히 해제하여 저주를 안전하게 무력화했습니다! (보상: +45 Gold)",
-                "fail": "저주 해제에 실패하여 불길한 저주의 마력이 온몸에 휘감겼습니다! (-30 체력)",
-                "succ_gold": 45, "fail_hp": 30
+                "text": "🧠 묘약의 성분을 파악하여 위험한 재료인지 확인한다",
+                "stat": "int", "diff": 14,
+                "succ": "마녀의 실수를 지적해 주고 보상으로 신비한 묘약을 나누어 마셨습니다! (+30 체력 회복)",
+                "fail": "마녀의 비기 재료를 건드렸다가 분노한 마녀의 저주에 당했습니다. (-20 체력)",
+                "succ_hp": 30, "fail_hp": 20
             },
             {
-                "text": "✨ 강인한 신념의 힘으로 상자의 악마적 분위기를 압도한다",
-                "stat": "cha",
-                "diff": 14,
-                "succ": "당신의 강한 정신력에 불길한 기운이 물러갔습니다. 상자가 열리며 희귀한 신성 재료가 흘러나옵니다. (+25 체력 회복)",
-                "fail": "악마의 환청이 귓가에 맴돌며 정신적 충격을 받았습니다. (-15 체력)",
-                "succ_hp": 25, "fail_hp": 15
+                "text": "✨ 친근하게 접근해 마녀와 대화를 시도한다",
+                "stat": "cha", "diff": 13,
+                "succ": "마녀는 마음을 열고 당신의 무기에 유용한 주문을 걸어주었습니다. (+15 Gold)",
+                "fail": "마녀는 타인을 믿지 않는다며 당신을 오두막 밖으로 내쫓았습니다.",
+                "succ_gold": 15
+            }
+        ]
+    },
+    {
+        "id": "sword_in_stone",
+        "title": "📜 바위에 꽂힌 의식용 검",
+        "desc": "오래된 제단 중앙, 커다란 바위에 정교한 장식의 검이 깊숙이 박혀 있습니다.",
+        "choices": [
+            {
+                "text": "⚔️ 온 힘을 다해 바위에서 검을 뽑아낸다",
+                "stat": "str", "diff": 16,
+                "succ": "바위에 금이 가며 검이 뽑혀 나왔습니다! 검을 팔아 큰 돈을 받았습니다. (+45 Gold)",
+                "fail": "손이 미끄러지며 바위에 강하게 부딪혔습니다. (-15 체력)",
+                "fail_hp": 15
+            },
+            {
+                "text": "🧠 제단 주변의 마법 진을 분석해 검을 해제한다",
+                "stat": "int", "diff": 15,
+                "succ": "마법적 고리를 풀자 검이 스르륵 빠져나왔습니다. (+35 Gold)",
+                "fail": "마법 결계가 역류하며 손에 심한 화상을 입었습니다. (-20 체력)",
+                "succ_gold": 35, "fail_hp": 20
             }
         ]
     },
     {
         "id": "ogre_bridge",
         "title": "📜 외나무다리를 막아선 오우거",
-        "desc": "깊은 계곡을 건너는 유일한 외나무다리에 거대한 오우거가 앉아 통행료를 요구하고 있습니다. 통행료는 무려 50골드입니다!",
+        "desc": "계곡의 외나무다리를 거대한 오우거가 막아서며 턱없는 통행료를 요구합니다.",
         "choices": [
             {
                 "text": "⚔️ 거대한 오우거와 목숨을 건 사투를 벌인다",
-                "stat": "str",
-                "diff": 17,
-                "succ": "오우거의 육중한 공격을 피하며 약점을 정확히 타격했습니다! 거구가 무너지며 통행료 주머니를 떨어뜨립니다. (+40 Gold)",
-                "fail": "오우거의 거대한 주먹에 맞고 계곡 아래로 굴러떨어졌습니다. 다행히 목숨은 건졌으나 중상을 입었습니다. (-40 체력)",
-                "succ_gold": 40, "fail_hp": 40
+                "stat": "str", "diff": 17,
+                "succ": "오우거의 육중한 공격을 피하고 약점을 타격해 제압했습니다! (+40 Gold)",
+                "fail": "오우거의 주먹에 맞고 계곡 아래로 굴러떨어졌습니다. (-35 체력)",
+                "succ_gold": 40, "fail_hp": 35
             },
             {
                 "text": "✨ 화술로 오우거를 속여 무료로 지나간다",
-                "stat": "cha",
-                "diff": 14,
-                "succ": "'뒤에서 왕국 기사단이 몰려오고 있다'고 거짓말을 하여 당황한 오우거가 다리를 비켜주게 만들었습니다.",
-                "fail": "오우거는 속지 않았고, 오히려 화를 내며 당신을 다리 밖으로 걷어찼습니다! (-20 체력)",
+                "stat": "cha", "diff": 14,
+                "succ": "'뒤에서 왕국 기사단이 몰려오고 있다'고 속여 오우거를 도망치게 했습니다.",
+                "fail": "오우거는 속지 않고 화를 내며 당신을 발로 차버렸습니다! (-20 체력)",
                 "fail_hp": 20
+            }
+        ]
+    },
+    {
+        "id": "shady_gambler",
+        "title": "📜 어두운 골목의 도박사",
+        "desc": "한 남자가 주사위 세 개를 보여주며 '솔솔한 내깃돈'을 걸고 한판 하자고 제안합니다.",
+        "choices": [
+            {
+                "text": "🎯 눈을 번뜩이며 도박사의 손장난을 파악한다",
+                "stat": "dex", "diff": 14,
+                "succ": "도박사의 속임수를 간파하고 역으로 허점을찔러 돈을 따냈습니다! (+30 Gold)",
+                "fail": "손놀림에 속아 돈을 전부 잃고 말았습니다. (-20 Gold)",
+                "succ_gold": 30, "fail_gold": 20
+            },
+            {
+                "text": "✨ 현란한 언변으로 승부수를 던진다",
+                "stat": "cha", "diff": 13,
+                "succ": "상대의 심리를 교란하여 승리를 거머쥐었습니다! (+25 Gold)",
+                "fail": "상대의 심리전에 말려들어 주머니를 털렸습니다. (-15 Gold)",
+                "succ_gold": 25, "fail_gold": 15
+            }
+        ]
+    },
+    {
+        "id": "abandoned_camp",
+        "title": "📜 버려진 모험가의 캠프",
+        "desc": "불씨가 꺼진 지 얼마 되지 않은 모험가의 텐트를 발견했습니다. 무언가 쓸만한 물건이 남아있을지 모릅니다.",
+        "choices": [
+            {
+                "text": "🎯 텐트 주변 함정을 경계하며 신중하게 수색한다",
+                "stat": "dex", "diff": 13,
+                "succ": "설치되어 있던 부비트랩을 비켜가며 비상 식량과 동전을 발견했습니다! (+20 체력 회복, +15 Gold)",
+                "fail": "줄에 발이 걸려 경보용 종이 울리고 함정이 발동했습니다! (-15 체력)",
+                "succ_hp": 20, "succ_gold": 15, "fail_hp": 15
+            },
+            {
+                "text": "🧠 남겨진 일기장을 읽고 모험가의 행방을 추적한다",
+                "stat": "int", "diff": 14,
+                "succ": "일기장에서 지도를 확보하여 숨겨진 비상금을 찾아냈습니다! (+35 Gold)",
+                "fail": "일기장을 읽는 데 몰두하다 야생 동물의 습격을 받았습니다! (-20 체력)",
+                "succ_gold": 35, "fail_hp": 20
             }
         ]
     }
 ]
 
 # ---------------------------------------------------------
-# 3. 게임 상태 초기화 및 리셋 함수
+# 3. 게임 상태 초기화 및 중복 방지 [카드 덱] 시스템
 # ---------------------------------------------------------
 def reset_game():
     st.session_state.game_started = False
     st.session_state.stage = "생성"
     st.session_state.current_event = None
+    st.session_state.event_deck = [] # 이벤트 인덱스가 저장될 덱(Deck)
     st.session_state.log = ""
 
 if "game_started" not in st.session_state:
     reset_game()
 
-def next_event():
-    st.session_state.current_event = random.choice(EVENTS)
+# 💡 [중복 없는 이벤트 뽑기 함수]
+def draw_next_event():
+    # 덱이 비어있으면 전체 이벤트 인덱스를 새로 무작위로 섞어 채움
+    if not st.session_state.event_deck:
+        indices = list(range(len(EVENTS)))
+        random.shuffle(indices)
+        st.session_state.event_deck = indices
+        
+    # 덱에서 하나를 꺼내어 이벤트를 지정 (뽑은 이벤트는 덱에서 제거됨)
+    next_idx = st.session_state.event_deck.pop()
+    st.session_state.current_event = EVENTS[next_idx]
     st.session_state.stage = "이벤트"
 
 # ---------------------------------------------------------
@@ -211,26 +274,27 @@ with st.sidebar:
         
         st.divider()
         st.subheader("📊 능력치 (Stats)")
-        st.caption("※ 초반 능력치가 낮아 난이도가 높습니다!")
         st.write(f"⚔️ **근력 (STR):** {st.session_state.str}")
         st.write(f"🎯 **민첩 (DEX):** {st.session_state.dex}")
         st.write(f"🧠 **지능 (INT):** {st.session_state.int}")
         st.write(f"✨ **매력 (CHA):** {st.session_state.cha}")
         
         st.divider()
-        # 🔄 언제든 처음부터 다시 시작 가능한 버튼
+        # 남은 미확인 이벤트 수 안내
+        remaining_cards = len(st.session_state.event_deck)
+        st.caption(f"🃏 덱에 남은 미확인 이벤트: **{remaining_cards}개**")
+        
         if st.button("🔄 처음부터 다시 시작", use_container_width=True):
             reset_game()
             st.rerun()
     else:
-        st.info("💡 캐릭터를 생성하면 이곳에 스탯과 인벤토리가 활성화됩니다.")
+        st.info("💡 캐릭터를 생성하면 상태창이 활성화됩니다.")
 
 # ---------------------------------------------------------
-# 5. [메인 화면 A] 캐릭터 생성 (초기 스탯 보너스 감소)
+# 5. [메인 화면 A] 캐릭터 생성
 # ---------------------------------------------------------
 if not st.session_state.game_started:
     st.title("📜 캐릭터 생성 (Character Creation)")
-    st.write("초기 능력치가 낮아 초반 난이도가 꽤 높습니다. 신중하게 능력치를 분배하세요!")
 
     job_choice = st.selectbox("🎭 직업 선택", list(JOBS.keys()))
     job_info = JOBS[job_choice]
@@ -254,7 +318,7 @@ if not st.session_state.game_started:
     remaining_points = 5 - used_points
 
     if remaining_points < 0:
-        st.error(f"⚠️ 사용 가능한 보너스 포인트를 초과했습니다! ({abs(remaining_points)}pt 초과)")
+        st.error(f"⚠️ 보너스 포인트를 초과했습니다! ({abs(remaining_points)}pt 초과)")
     else:
         st.success(f"남은 포인트: **{remaining_points} pt**")
         
@@ -264,20 +328,19 @@ if not st.session_state.game_started:
             st.session_state.armor = job_info["armor"]
             st.session_state.hp = job_info["base_hp"]
             st.session_state.max_hp = job_info["base_hp"]
-            st.session_state.gold = 20  # 시작 골드 조율
+            st.session_state.gold = 20
             
-            # 하향된 스탯 + 보너스 포인트 저장
             st.session_state.str = job_info["base_stats"]["str"] + add_str
             st.session_state.dex = job_info["base_stats"]["dex"] + add_dex
             st.session_state.int = job_info["base_stats"]["int"] + add_int
             st.session_state.cha = job_info["base_stats"]["cha"] + add_cha
             
             st.session_state.game_started = True
-            next_event()
+            draw_next_event()
             st.rerun()
 
 # ---------------------------------------------------------
-# 6. [메인 화면 B] 이벤트 / 결과 / 게임 오버
+# 6. [메인 화면 B] 메인 이벤트 진행
 # ---------------------------------------------------------
 else:
     st.title("📜 모험가 이야기 (Life in Adventure)")
@@ -289,7 +352,7 @@ else:
             reset_game()
             st.rerun()
 
-    # [2] 이벤트 진행 중
+    # [2] 이벤트 진행 화면
     elif st.session_state.stage == "이벤트":
         ev = st.session_state.current_event
         st.subheader(ev["title"])
@@ -303,9 +366,7 @@ else:
             p_stat = getattr(st.session_state, stat_key)
             stat_name = {"str": "근력", "dex": "민첩", "int": "지능", "cha": "매력"}[stat_key]
             
-            # 스탯 하향으로 인해 초반 성공률이 약 25% ~ 60% 수준으로 조율됨
             chance = calculate_success_rate(p_stat, choice["diff"])
-            
             btn_text = f"{choice['text']}\n[{stat_name} {p_stat} | 난이도 {choice['diff']} | 성공률: {chance}%]"
             
             if st.button(btn_text, key=f"choice_btn_{idx}", use_container_width=True):
@@ -343,5 +404,5 @@ else:
             st.warning(st.session_state.log)
             
         if st.button("▶️ 다음 모험 카드로 이동", use_container_width=True):
-            next_event()
+            draw_next_event()
             st.rerun()
