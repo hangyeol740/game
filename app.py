@@ -9,7 +9,6 @@ st.set_page_config(
     page_title="모험가의 여정 - 캐릭터 생성 및 확장판", page_icon="🗺️", layout="centered"
 )
 
-# 게임 진행 상태 플래그 ('create': 캐릭터 생성창, 'explore': 모험/이벤트 진행 중)
 if "game_state" not in st.session_state:
     st.session_state.game_state = "create"
 
@@ -30,7 +29,6 @@ if "current_event" not in st.session_state:
 if "text_animated" not in st.session_state:
     st.session_state.text_animated = False
 
-# 게임 초기화 함수 (캐릭터 생성 화면으로 돌아감)
 def reset_game():
     st.session_state.game_state = "create"
     st.session_state.hp = 100
@@ -43,7 +41,7 @@ def reset_game():
     st.session_state.text_animated = False
 
 # ---------------------------------------------------------
-# 2. 캐릭터 생성 화면 (직업 및 초기 스탯 설정)
+# 2. 캐릭터 생성 화면
 # ---------------------------------------------------------
 if st.session_state.game_state == "create":
     st.title("🛡️ 모험가 생성소")
@@ -57,7 +55,6 @@ if st.session_state.game_state == "create":
     st.markdown("---")
     st.subheader("📊 초기 스탯 분배 (총 포인트: 10)")
     
-    # 슬라이더로 스탯 분배 (합이 10이 되도록 권장)
     stat_str = st.slider("💪 근력 (전투 성공률 및 무기 위력 영향)", 1, 8, 4)
     stat_agi = st.slider("🏃 민첩 (도주 및 회피 확률 영향)", 1, 8, 3)
     stat_luk = st.slider("✨ 행운 (골드 획득량 및 아이템 발견 영향)", 1, 8, 3)
@@ -68,7 +65,6 @@ if st.session_state.game_state == "create":
         st.success("✨ 스탯 배분 완료! 모험을 시작할 준비가 되었습니다.")
 
     if st.button("🚀 모험 시작하기"):
-        # 직업 및 스탯에 따른 초기 능력치 설정
         st.session_state.job = job_choice.split(" ")[0]
         
         if st.session_state.job == "전사":
@@ -78,14 +74,13 @@ if st.session_state.game_state == "create":
         elif st.session_state.job == "도적":
             st.session_state.max_hp = 90
             st.session_state.hp = 90
-            st.session_state.gold = 70 # 시작 골드 우대
+            st.session_state.gold = 70
             st.session_state.weapon = "날렵한 단검"
-        else: # 마법사
+        else:
             st.session_state.max_hp = 100
             st.session_state.hp = 100
             st.session_state.weapon = "마력의 지팡이"
 
-        # 세부 스탯 저장
         st.session_state.stat_str = stat_str
         st.session_state.stat_agi = stat_agi
         st.session_state.stat_luk = stat_luk
@@ -93,7 +88,7 @@ if st.session_state.game_state == "create":
         st.session_state.game_state = "explore"
         st.rerun()
 
-    st.stop() # 생성 화면일 때는 아래 모험 코드가 실행되지 않도록 차단
+    st.stop()
 
 # ---------------------------------------------------------
 # 3. 사이드바: 상태창 및 포션 사용
@@ -108,7 +103,6 @@ st.sidebar.markdown(f"🎒 **인벤토리:** {st.session_state.inventory}")
 
 st.sidebar.markdown("---")
 
-# 포션 사용 기능
 if "체력 포션" in st.session_state.inventory:
     if st.sidebar.button("🧪 포션 사용 (+30 HP)"):
         st.session_state.inventory.remove("체력 포션")
@@ -126,18 +120,14 @@ if st.sidebar.button("🔄 캐릭터 다시 만들기"):
 # 4. 엔딩 및 사망 조건 체크
 # ---------------------------------------------------------
 if st.session_state.hp <= 0:
-    st.error(
-        "💀 **[BAD ENDING] 거듭된 상처와 피로를 이기지 못하고 길에서 쓰러졌습니다... 다시 도전하세요.**"
-    )
+    st.error("💀 **[BAD ENDING] 거듭된 상처와 피로를 이기지 못하고 길에서 쓰러졌습니다... 다시 도전하세요.**")
     if st.button("처음부터 다시 시작하기"):
         reset_game()
         st.rerun()
     st.stop()
 
 if st.session_state.gold >= 150:
-    st.success(
-        "👑 **[HAPPY ENDING] 막대한 부를 쌓아 영지의 전설적인 영웅으로 추대되었습니다!**"
-    )
+    st.success("👑 **[HAPPY ENDING] 막대한 부를 쌓아 영지의 전설적인 영웅으로 추대되었습니다!**")
     if st.button("새로운 모험 시작하기"):
         reset_game()
         st.rerun()
@@ -195,7 +185,6 @@ EVENTS = [
     },
 ]
 
-# 현재 이벤트가 없다면 무작위로 하나 선택
 if st.session_state.current_event is None:
     st.session_state.current_event = random.choice(EVENTS)
     st.session_state.text_animated = False
@@ -265,4 +254,37 @@ if event.get("type") == "merchant":
     st.markdown("---")
     if st.button("🚪 상점을 나와 다시 험난한 길을 떠난다"):
         st.session_state.current_event = None
-        st.session_state.text_animated =
+        st.session_state.text_animated = False
+        st.rerun()
+
+else:
+    for i, choice in enumerate(event["choices"]):
+        if st.button(choice["text"], key=f"choice_{i}"):
+            stat_bonus = (st.session_state.stat_str + st.session_state.stat_agi + st.session_state.stat_luk) * 2
+            if "명검" in st.session_state.weapon:
+                stat_bonus += 15
+
+            success_roll = random.randint(1, 100) - stat_bonus
+
+            if success_roll <= 50:
+                st.success(choice["succ"])
+                if "succ_gold" in choice:
+                    bonus_gold = st.session_state.stat_luk * 2
+                    st.session_state.gold += choice["succ_gold"] + bonus_gold
+                if "succ_hp" in choice:
+                    st.session_state.hp = min(
+                        st.session_state.max_hp,
+                        st.session_state.hp + choice["succ_hp"],
+                    )
+            else:
+                st.error(choice["fail"])
+                if "fail_hp" in choice:
+                    st.session_state.hp -= choice["fail_hp"]
+                if "fail_gold" in choice:
+                    st.session_state.gold = max(
+                        0, st.session_state.gold - choice["fail_gold"]
+                    )
+
+            st.session_state.current_event = None
+            st.session_state.text_animated = False
+            st.rerun()
