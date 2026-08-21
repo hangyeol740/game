@@ -4,8 +4,14 @@ from openai import OpenAI
 # 1. 페이지 설정
 st.set_page_config(page_title="AI 프롬프트 보완기", page_icon="🪄", layout="centered")
 
-# 2. Streamlit Secrets에서 API Key 가져오기
-api_key = st.secrets.get("OPENAI_API_KEY", "")
+# 2. Streamlit Secrets에서 API Key 가져오기 (리스트 및 단일 키 모두 호환)
+api_keys = st.secrets.get("OPENAI_API_KEYS", [])
+
+if not api_keys and st.secrets.get("OPENAI_API_KEY"):
+    api_keys = [st.secrets.get("OPENAI_API_KEY")]
+
+# 사용할 활성 키 지정 (리스트의 첫 번째 키 사용)
+api_key = api_keys[0] if api_keys else ""
 
 # 3. 타이틀
 st.title("🪄 AI 프롬프트 보완기")
@@ -16,13 +22,13 @@ st.markdown("---")
 original_prompt = st.text_area(
     "보완할 원본 프롬프트를 입력하세요:",
     height=150,
-    placeholder="예: 블로그 글 써줘"
+    placeholder="예: 인스타그램에 올릴 제주도 여행 카드뉴스 문구 짜줘."
 )
 
 # 5. 실행 버튼
 if st.button("🚀 프롬프트 보완하기", type="primary", use_container_width=True):
     if not api_key:
-        st.error("⚠️ Streamlit Secrets에 OPENAI_API_KEY가 설정되어 있지 않습니다.")
+        st.error("⚠️ Streamlit Secrets에 OPENAI_API_KEYS가 설정되어 있지 않습니다.")
     elif not original_prompt.strip():
         st.warning("⚠️ 프롬프트를 입력해 주세요.")
     else:
