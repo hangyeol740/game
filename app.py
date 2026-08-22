@@ -2,20 +2,14 @@ import streamlit as st
 from openai import OpenAI
 
 # 1. 페이지 설정
-st.set_page_config(page_title="AI 프롬프트 보완기", page_icon="🪄", layout="centered")
+st.set_page_config(page_title="AI 프롬프트 보완기", page_icon="⚡", layout="centered")
 
-# 2. Streamlit Secrets에서 API Key 가져오기 (리스트 및 단일 키 모두 호환)
-api_keys = st.secrets.get("OPENAI_API_KEYS", [])
-
-if not api_keys and st.secrets.get("OPENAI_API_KEY"):
-    api_keys = [st.secrets.get("OPENAI_API_KEY")]
-
-# 사용할 활성 키 지정 (리스트의 첫 번째 키 사용)
-api_key = api_keys[0] if api_keys else ""
+# 2. Streamlit Secrets에서 Groq API Key 가져오기
+api_key = st.secrets.get("GROQ_API_KEY", "")
 
 # 3. 타이틀
-st.title("🪄 AI 프롬프트 보완기")
-st.write("아이디어를 입력하면, AI가 가장 최적화된 구조의 프롬프트로 변환해 드립니다.")
+st.title("⚡ AI 프롬프트 보완기 (Groq 무료버전)")
+st.write("아이디어를 입력하면, 초고속 Groq AI가 가장 최적화된 구조의 프롬프트로 변환해 드립니다.")
 st.markdown("---")
 
 # 4. 입력 영역
@@ -28,12 +22,16 @@ original_prompt = st.text_area(
 # 5. 실행 버튼
 if st.button("🚀 프롬프트 보완하기", type="primary", use_container_width=True):
     if not api_key:
-        st.error("⚠️ Streamlit Secrets에 OPENAI_API_KEYS가 설정되어 있지 않습니다.")
+        st.error("⚠️ Streamlit Secrets에 GROQ_API_KEY가 설정되어 있지 않습니다.")
     elif not original_prompt.strip():
         st.warning("⚠️ 프롬프트를 입력해 주세요.")
     else:
         try:
-            client = OpenAI(api_key=api_key)
+            # Groq API는 OpenAI SDK와 호환되며 base_url을 변경하여 사용합니다.
+            client = OpenAI(
+                api_key=api_key,
+                base_url="https://api.groq.com/openai/v1"
+            )
             
             with st.spinner("AI가 프롬프트를 분석하고 최적화하는 중입니다..."):
                 system_prompt = """
@@ -48,7 +46,7 @@ if st.button("🚀 프롬프트 보완하기", type="primary", use_container_wid
                 """
                 
                 response = client.chat.completions.create(
-                    model="gpt-4o-mini",
+                    model="llama-3.3-70b-versatile",
                     messages=[
                         {"role": "system", "content": system_prompt},
                         {"role": "user", "content": f"원본 프롬프트: {original_prompt}"}
