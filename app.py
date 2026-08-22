@@ -27,7 +27,6 @@ if st.button("🚀 프롬프트 보완하기", type="primary", use_container_wid
         st.warning("⚠️ 프롬프트를 입력해 주세요.")
     else:
         try:
-            # Groq API는 OpenAI SDK와 호환되며 base_url을 변경하여 사용합니다.
             client = OpenAI(
                 api_key=api_key,
                 base_url="https://api.groq.com/openai/v1"
@@ -46,7 +45,7 @@ if st.button("🚀 프롬프트 보완하기", type="primary", use_container_wid
                 """
                 
                 response = client.chat.completions.create(
-                    model="llama-3.3-70b-versatile",
+                    model="llama-3.1-8b-instant",
                     messages=[
                         {"role": "system", "content": system_prompt},
                         {"role": "user", "content": f"원본 프롬프트: {original_prompt}"}
