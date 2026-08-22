@@ -45,7 +45,7 @@ if st.button("🚀 프롬프트 보완하기", type="primary", use_container_wid
                 """
                 
                 response = client.chat.completions.create(
-                    model="llama-3.1-8b-instant",
+                    model="gemma2-9b-it",
                     messages=[
                         {"role": "system", "content": system_prompt},
                         {"role": "user", "content": f"원본 프롬프트: {original_prompt}"}
